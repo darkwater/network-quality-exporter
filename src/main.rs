@@ -268,9 +268,10 @@ async fn main() -> anyhow::Result<()> {
                     .expect("failed to wait for udp socket writable");
 
                 let start = Instant::now();
-                sock.send(&payload)
-                    .await
-                    .expect("failed to send udp packet");
+                if let Err(e) = sock.send(&payload).await {
+                    tracing::warn!("failed to send udp packet to {}: {}", udpecho.host, e);
+                    continue;
+                }
 
                 select! {
                     _ = ticker.tick() => {
@@ -292,7 +293,7 @@ async fn main() -> anyhow::Result<()> {
                                 ticker.tick().await;
                             }
                             Err(e) => {
-                                panic!("failed to receive udp packet from {}: {}", udpecho.host, e);
+                                tracing::error!("failed to receive udp packet from {}: {}", udpecho.host, e);
                             }
                         }
                     }
